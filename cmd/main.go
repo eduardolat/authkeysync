@@ -13,13 +13,7 @@ import (
 
 	"github.com/eduardolat/authkeysync/internal/config"
 	"github.com/eduardolat/authkeysync/internal/sync"
-)
-
-// Version information (set at build time)
-var (
-	version = "dev"
-	commit  = "unknown"
-	date    = "unknown"
+	"github.com/eduardolat/authkeysync/internal/version"
 )
 
 // Exit codes
@@ -57,9 +51,9 @@ func run() int {
 
 	// Show version and exit
 	if *showVersion {
-		fmt.Printf("AuthKeySync %s\n", version)
-		fmt.Printf("  Commit: %s\n", commit)
-		fmt.Printf("  Built:  %s\n", date)
+		fmt.Printf("AuthKeySync %s\n", version.Version)
+		fmt.Printf("  Commit: %s\n", version.Commit)
+		fmt.Printf("  Built:  %s\n", version.Date)
 		return ExitSuccess
 	}
 
@@ -74,7 +68,7 @@ func run() int {
 	}))
 
 	logger.Info("AuthKeySync starting",
-		"version", version,
+		"version", version.Version,
 		"config", *configPath,
 		"dry_run", *dryRun)
 
