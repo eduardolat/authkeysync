@@ -111,6 +111,7 @@ The application implements a **Blast Radius Containment** strategy.
    - The tool iterates through all `sources` for a user.
    - **Logic:** If **ANY** source for a specific user fails (non-200 status, timeout, DNS error), the entire update for that user is marked as **FAILED**.
    - **Action:** Log Error & **ABORT** update for this user. The existing `authorized_keys` file remains untouched.
+   - **User-Agent:** All HTTP requests include the header `User-Agent: AuthKeySync` by default. Some providers (corporate firewalls) block requests without a proper User-Agent. To use a custom User-Agent, specify it in the source's `headers` configuration (e.g., `User-Agent: "MyCompany-KeySync/2.0"`).
 
 ### 3.2 Key Parsing Rules
 
