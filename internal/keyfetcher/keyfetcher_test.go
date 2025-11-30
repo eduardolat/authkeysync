@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/eduardolat/authkeysync/internal/config"
+	"github.com/eduardolat/authkeysync/internal/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -106,7 +108,10 @@ func TestFetch_DefaultUserAgent(t *testing.T) {
 	result := fetcher.Fetch(context.Background(), source)
 
 	require.NoError(t, result.Error)
-	assert.Equal(t, DefaultUserAgent, receivedUserAgent)
+	// User-Agent should contain AuthKeySync and version
+	assert.True(t, strings.HasPrefix(receivedUserAgent, "AuthKeySync/"),
+		"User-Agent should start with AuthKeySync/, got: %s", receivedUserAgent)
+	assert.Equal(t, version.UserAgent(), receivedUserAgent)
 }
 
 func TestFetch_CustomUserAgent(t *testing.T) {
@@ -322,4 +327,37 @@ func TestFetch_ContextCancellation(t *testing.T) {
 	result := fetcher.Fetch(ctx, source)
 
 	require.Error(t, result.Error)
+}
+
+func TestFetch_EmptyResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// Empty response body
+	}))
+	defer server.Close()
+
+	fetcher := New()
+	source := config.Source{URL: server.URL}
+
+	result := fetcher.Fetch(context.Background(), source)
+
+	require.NoError(t, result.Error)
+	assert.Len(t, result.Keys, 0)
+}
+
+func TestFetch_JSONErrorResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"error": "something went wrong"}`))
+	}))
+	defer server.Close()
+
+	fetcher := New()
+	source := config.Source{URL: server.URL}
+
+	result := fetcher.Fetch(context.Background(), source)
+
+	require.NoError(t, result.Error)
+	assert.Len(t, result.Keys, 0)
+	assert.Equal(t, 1, result.DiscardedLines)
 }
