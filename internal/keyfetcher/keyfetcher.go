@@ -11,11 +11,10 @@ import (
 
 	"github.com/eduardolat/authkeysync/internal/config"
 	"github.com/eduardolat/authkeysync/internal/keyparser"
+	"github.com/eduardolat/authkeysync/internal/version"
 )
 
 const (
-	// DefaultUserAgent is the default User-Agent header value
-	DefaultUserAgent = "AuthKeySync"
 	// MaxResponseSize is the maximum response body size (10MB)
 	MaxResponseSize = 10 * 1024 * 1024
 )
@@ -85,7 +84,7 @@ func (f *Fetcher) Fetch(ctx context.Context, source config.Source) *FetchResult 
 		}
 	}
 	if !hasUserAgent {
-		req.Header.Set("User-Agent", DefaultUserAgent)
+		req.Header.Set("User-Agent", version.UserAgent())
 	}
 
 	// Set custom headers
