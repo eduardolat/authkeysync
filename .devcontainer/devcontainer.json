@@ -1,0 +1,28 @@
+{
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "dprint.dprint"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "dprint.dprint",
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": [
+          "--fast"
+        ],
+        "go.testFlags": [
+          "-v"
+        ]
+      }
+    }
+  }
+}
