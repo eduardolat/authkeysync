@@ -30,14 +30,11 @@ tasks:
   run:
     cmds:
       - task: build
-      - task: exec
+      - ./dist/authkeysync {{.CLI_ARGS}}
 
   build:
     desc: Build the binary for the current platform
     cmd: CGO_ENABLED=0 go build -ldflags "{{.LDFLAGS}}" -o dist/authkeysync ./cmd
-
-  exec:
-    cmd: ./dist/authkeysync
 
   fmt:
     desc: Format all code
