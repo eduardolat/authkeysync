@@ -224,7 +224,7 @@ If a source yields zero keys (after deduplication), its section header is **omit
 To prevent data corruption during power loss or system crashes, file writes are strictly atomic.
 
 1. **Resolve Paths:** Target is `~/.ssh/authorized_keys`, resolved from the user's home directory (e.g., `/root/.ssh/authorized_keys` for root, `/home/bob/.ssh/authorized_keys` for bob).
-2. **Temp File:** Create a temporary file **inside** the user's `.ssh/` directory (e.g., `~/.ssh/.authkeysync_<YYYYMMDDHHMMSS>_<randomID>`).
+2. **Temp File:** Create a temporary file **inside** the user's `.ssh/` directory (e.g., `~/.ssh/.authkeysync_<YYYYMMDD_HHMMSS>_<randomID>`).
    - _Constraint:_ Must be on the same filesystem partition to allow atomic `rename`.
 3. **Permissions (Security Critical):**
    - Immediately execute `chmod 0600` on the temp file.
@@ -251,7 +251,7 @@ Backups are performed locally within the user's `.ssh` directory to ensure permi
 | Property      | Value                                                               |
 | :------------ | :------------------------------------------------------------------ |
 | **Directory** | `~/.ssh/authorized_keys_backups/` (created if missing, mode `0700`) |
-| **Filename**  | `authorized_keys_<YYYYMMDDHHMMSS>_<randomID>` (UTC timestamp)       |
+| **Filename**  | `authorized_keys_<YYYYMMDD_HHMMSS>_<randomID>` (UTC timestamp)      |
 | **Trigger**   | Only if content has changed **and** `backup_enabled=true`           |
 | **Retention** | Controlled by `backup_retention_count`. Oldest files deleted first. |
 
