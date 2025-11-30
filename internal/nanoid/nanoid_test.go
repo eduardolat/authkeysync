@@ -33,7 +33,7 @@ func TestGenerate_Uniqueness(t *testing.T) {
 	ids := make(map[string]bool)
 	iterations := 1000
 
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		id, err := Generate()
 		require.NoError(t, err)
 		assert.False(t, ids[id], "duplicate ID generated: %s", id)
@@ -42,7 +42,7 @@ func TestGenerate_Uniqueness(t *testing.T) {
 }
 
 func TestGenerate_OnlyLowercaseLetters(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		id, err := Generate()
 		require.NoError(t, err)
 
@@ -59,4 +59,27 @@ func TestMustGenerate(t *testing.T) {
 		id := MustGenerate()
 		assert.Len(t, id, 6)
 	})
+}
+
+func TestGenerate_Length(t *testing.T) {
+	for range 100 {
+		id, err := Generate()
+		require.NoError(t, err)
+		assert.Len(t, id, 6, "ID should always be exactly 6 characters")
+	}
+}
+
+func TestGenerate_Alphabet(t *testing.T) {
+	// Verify that all generated characters are from the expected alphabet
+	validChars := "abcdefghijklmnopqrstuvwxyz"
+
+	for range 100 {
+		id, err := Generate()
+		require.NoError(t, err)
+
+		for _, char := range id {
+			assert.Contains(t, validChars, string(char),
+				"character %c is not in the valid alphabet", char)
+		}
+	}
 }
