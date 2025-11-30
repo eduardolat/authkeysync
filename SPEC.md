@@ -34,6 +34,7 @@ The application is configured exclusively via **YAML**.
 
 - **Default Path:** `/etc/authkeysync/config.yaml`
 - **CLI Override:** `authkeysync --config <path>`
+- **Dry Run Mode:** `authkeysync --dry-run` (simulates sync, prints actions without modifying files)
 
 ### 2.1 Configuration Schema
 
@@ -254,6 +255,10 @@ Backups are performed locally within the user's `.ssh` directory to ensure permi
 | **Filename**  | `authorized_keys_<YYYYMMDD_HHMMSS>_<randomID>` (UTC timestamp)      |
 | **Trigger**   | Only if content has changed **and** `backup_enabled=true`           |
 | **Retention** | Controlled by `backup_retention_count`. Oldest files deleted first. |
+
+**Ownership:** The backup directory and all backup files must be owned by the target user (UID:GID), not root. This ensures the user can manually manage their own backups if needed.
+
+**Timestamp Format:** All date/time components use zero-padding (e.g., `09` not `9` for September). This ensures alphabetical sorting matches chronological order.
 
 ## 5. Development Requirements
 
