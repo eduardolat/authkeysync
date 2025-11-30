@@ -5,10 +5,15 @@ version: "3"
 tasks:
   ci:
     cmds:
+      - task: deps
       - task: fmt
       - task: build
       - task: lint
       - task: test
+
+  deps:
+    desc: Install all dependencies for the project
+    cmd: go mod download
 
   run:
     cmds:
