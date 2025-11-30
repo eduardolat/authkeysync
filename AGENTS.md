@@ -18,6 +18,8 @@ Read the [Taskfile.yml](Taskfile.yml) file to understand the commands available 
 - Always use modern Go syntax and features.
 - Always check for nil values to prevent nil pointer dereferences.
 - Use testify and table tests for testing.
+- Use the `slog` package for logging.
+- Use inversion of control (IoC) and dependency injection (DI) to make the code more modular and testable.
 
 ## Code quality guidelines
 
