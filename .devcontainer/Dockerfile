@@ -22,7 +22,9 @@ RUN \
     cd /tmp/downloads && \
     # Install system dependencies
     apt update -qq && \
-    apt install -qq -y wget curl net-tools tree zip unzip p7zip-full git && \
+    apt install -qq -y wget curl net-tools tree zip unzip p7zip-full git python3 python3-pip && \
+    # Install mkdocs-material
+    pip install -qq mkdocs-material --break-system-packages && \
     # Download and install architecture-specific binaries
     if [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
       echo "Downloading arm64 binaries" && \
