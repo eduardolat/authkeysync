@@ -2,6 +2,13 @@
 
 Before you start, please read the [SPEC.md](SPEC.md) file to understand the specification of the project.
 
+## Project structure
+
+The project is organized into the following directories:
+
+- `cmd`: Contains the main command-line application.
+- `internal`: Contains the internal logic of the project. Should be divided into smaller well tested packages dedicated to a specific functionality.
+
 ## Project commands
 
 Read the [Taskfile.yml](Taskfile.yml) file to understand the commands available for the project.
