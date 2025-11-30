@@ -1,0 +1,141 @@
+// AuthKeySync is a lightweight CLI utility for synchronizing SSH public keys
+// from remote URLs into local authorized_keys files.
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/eduardolat/authkeysync/internal/config"
+	"github.com/eduardolat/authkeysync/internal/sync"
+)
+
+// Version information (set at build time)
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
+// Exit codes
+const (
+	ExitSuccess = 0
+	ExitFailure = 1
+)
+
+func main() {
+	os.Exit(run())
+}
+
+func run() int {
+	// Define CLI flags
+	configPath := flag.String("config", config.DefaultConfigPath, "Path to the configuration file")
+	dryRun := flag.Bool("dry-run", false, "Simulate sync without modifying files")
+	showVersion := flag.Bool("version", false, "Show version information and exit")
+	debug := flag.Bool("debug", false, "Enable debug logging")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "AuthKeySync - SSH Public Key Synchronization Tool\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: authkeysync [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  authkeysync                           # Use default config path\n")
+		fmt.Fprintf(os.Stderr, "  authkeysync --config /path/to/config  # Use custom config\n")
+		fmt.Fprintf(os.Stderr, "  authkeysync --dry-run                 # Simulate without changes\n")
+		fmt.Fprintf(os.Stderr, "\nExit Codes:\n")
+		fmt.Fprintf(os.Stderr, "  0  Success (all users processed successfully or skipped)\n")
+		fmt.Fprintf(os.Stderr, "  1  Failure (at least one user failed to synchronize)\n")
+	}
+
+	flag.Parse()
+
+	// Show version and exit
+	if *showVersion {
+		fmt.Printf("AuthKeySync %s\n", version)
+		fmt.Printf("  Commit: %s\n", commit)
+		fmt.Printf("  Built:  %s\n", date)
+		return ExitSuccess
+	}
+
+	// Setup logger
+	logLevel := slog.LevelInfo
+	if *debug {
+		logLevel = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+
+	logger.Info("AuthKeySync starting",
+		"version", version,
+		"config", *configPath,
+		"dry_run", *dryRun)
+
+	// Load configuration
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		logger.Error("failed to load configuration",
+			"path", *configPath,
+			"error", err)
+		return ExitFailure
+	}
+
+	logger.Info("configuration loaded",
+		"users", len(cfg.Users),
+		"backup_enabled", cfg.Policy.IsBackupEnabled(),
+		"backup_retention", cfg.Policy.GetBackupRetentionCount(),
+		"preserve_local_keys", cfg.Policy.IsPreserveLocalKeys())
+
+	// Setup context with signal handling
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		logger.Warn("received signal, shutting down",
+			"signal", sig.String())
+		cancel()
+	}()
+
+	// Run synchronization
+	syncer := sync.New(cfg, logger, *dryRun)
+	result := syncer.Run(ctx)
+
+	// Log summary
+	successCount := 0
+	skippedCount := 0
+	failedCount := 0
+
+	for _, userResult := range result.Users {
+		if userResult.Error != nil {
+			failedCount++
+		} else if userResult.Skipped {
+			skippedCount++
+		} else {
+			successCount++
+		}
+	}
+
+	logger.Info("synchronization complete",
+		"success", successCount,
+		"skipped", skippedCount,
+		"failed", failedCount)
+
+	if result.HasErrors {
+		logger.Error("some users failed to synchronize")
+		return ExitFailure
+	}
+
+	logger.Info("all users processed successfully")
+	return ExitSuccess
+}
