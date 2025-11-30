@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -106,6 +107,87 @@ func TestCreateBackup_BackupDirExists(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, backupPath)
+}
+
+func TestCreateBackup_FilePermissions(t *testing.T) {
+	tempDir := t.TempDir()
+	sshDir := filepath.Join(tempDir, ".ssh")
+	require.NoError(t, os.Mkdir(sshDir, 0700))
+
+	// Create authorized_keys file
+	authKeysPath := filepath.Join(sshDir, "authorized_keys")
+	require.NoError(t, os.WriteFile(authKeysPath, []byte("ssh-ed25519 AAAA key"), 0600))
+
+	manager := NewWithDeps(
+		func() (string, error) { return "permtest", nil },
+		time.Now,
+	)
+
+	uid := os.Getuid()
+	gid := os.Getgid()
+	backupPath, err := manager.CreateBackup(sshDir, uid, gid)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, backupPath)
+
+	// Verify backup file permissions are exactly 0600
+	stat, err := os.Stat(backupPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(BackupFileMode), stat.Mode().Perm(),
+		"backup file should have 0600 permissions")
+
+	// Verify backup directory permissions are exactly 0700
+	backupDir := filepath.Join(sshDir, BackupDirName)
+	dirStat, err := os.Stat(backupDir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(BackupDirMode), dirStat.Mode().Perm(),
+		"backup directory should have 0700 permissions")
+}
+
+func TestCreateBackup_BackupDirNotADirectory(t *testing.T) {
+	tempDir := t.TempDir()
+	sshDir := filepath.Join(tempDir, ".ssh")
+	require.NoError(t, os.Mkdir(sshDir, 0700))
+
+	// Create a file where backup directory should be
+	backupDir := filepath.Join(sshDir, BackupDirName)
+	require.NoError(t, os.WriteFile(backupDir, []byte("not a dir"), 0600))
+
+	// Create authorized_keys file
+	authKeysPath := filepath.Join(sshDir, "authorized_keys")
+	require.NoError(t, os.WriteFile(authKeysPath, []byte("ssh-ed25519 AAAA key"), 0600))
+
+	manager := New()
+	uid := os.Getuid()
+	gid := os.Getgid()
+
+	_, err := manager.CreateBackup(sshDir, uid, gid)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not a directory")
+}
+
+func TestCreateBackup_IDGeneratorError(t *testing.T) {
+	tempDir := t.TempDir()
+	sshDir := filepath.Join(tempDir, ".ssh")
+	require.NoError(t, os.Mkdir(sshDir, 0700))
+
+	// Create authorized_keys file
+	authKeysPath := filepath.Join(sshDir, "authorized_keys")
+	require.NoError(t, os.WriteFile(authKeysPath, []byte("ssh-ed25519 AAAA key"), 0600))
+
+	// Create manager with failing ID generator
+	manager := NewWithDeps(
+		func() (string, error) { return "", errors.New("id generation failed") },
+		time.Now,
+	)
+
+	uid := os.Getuid()
+	gid := os.Getgid()
+	_, err := manager.CreateBackup(sshDir, uid, gid)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to generate backup ID")
 }
 
 func TestRotateBackups_KeepsCorrectCount(t *testing.T) {
@@ -243,9 +325,49 @@ func TestRotateBackups_NegativeRetention(t *testing.T) {
 	assert.Contains(t, err.Error(), "retention count cannot be negative")
 }
 
+func TestRotateBackups_IgnoresSubdirectories(t *testing.T) {
+	tempDir := t.TempDir()
+	sshDir := filepath.Join(tempDir, ".ssh")
+	require.NoError(t, os.Mkdir(sshDir, 0700))
+	backupDir := filepath.Join(sshDir, BackupDirName)
+	require.NoError(t, os.Mkdir(backupDir, BackupDirMode))
+
+	// Create a subdirectory with backup-like name
+	subDir := filepath.Join(backupDir, "authorized_keys_20240101_100000_subdir")
+	require.NoError(t, os.Mkdir(subDir, 0700))
+
+	// Create backup files
+	require.NoError(t, os.WriteFile(
+		filepath.Join(backupDir, "authorized_keys_20240102_100000_aaaaaa"),
+		[]byte("content"), 0600))
+
+	manager := New()
+	deleted, err := manager.RotateBackups(sshDir, 1)
+
+	require.NoError(t, err)
+	assert.Nil(t, deleted) // Subdirectory is ignored, only 1 file exists
+
+	// Verify subdirectory still exists
+	stat, err := os.Stat(subDir)
+	require.NoError(t, err)
+	assert.True(t, stat.IsDir())
+}
+
 func TestNew(t *testing.T) {
 	manager := New()
 	assert.NotNil(t, manager)
 	assert.NotNil(t, manager.idGenerator)
 	assert.NotNil(t, manager.timeNow)
+}
+
+func TestNewWithDeps(t *testing.T) {
+	customIDGen := func() (string, error) { return "custom", nil }
+	customTime := func() time.Time { return time.Unix(0, 0) }
+
+	manager := NewWithDeps(customIDGen, customTime)
+
+	assert.NotNil(t, manager)
+	id, _ := manager.idGenerator()
+	assert.Equal(t, "custom", id)
+	assert.Equal(t, time.Unix(0, 0), manager.timeNow())
 }
