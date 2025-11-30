@@ -192,7 +192,7 @@ func (m *Manager) RotateBackups(sshDir string, retentionCount int) ([]string, er
 
 	// Delete oldest files
 	deleted := make([]string, 0, deleteCount)
-	for i := 0; i < deleteCount; i++ {
+	for i := range deleteCount {
 		path := filepath.Join(backupDir, backups[i])
 		if err := os.Remove(path); err != nil {
 			return deleted, fmt.Errorf("failed to remove backup %s: %w", backups[i], err)
