@@ -1,6 +1,35 @@
 site_name: AuthKeySync
 site_url: https://eduardolat.github.io/authkeysync
+repo_url: https://github.com/eduardolat/authkeysync
+repo_name: eduardolat/authkeysync
+
 theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo-square.png
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to automatic mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
