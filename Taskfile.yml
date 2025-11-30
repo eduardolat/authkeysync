@@ -3,6 +3,13 @@
 version: "3"
 
 tasks:
+  ci:
+    cmds:
+      - task: fmt
+      - task: build
+      - task: lint
+      - task: test
+
   run:
     cmds:
       - task: build
