@@ -1,0 +1,6 @@
+site_name: AuthKeySync
+site_url: https://eduardolat.github.io/authkeysync
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo-square.png
