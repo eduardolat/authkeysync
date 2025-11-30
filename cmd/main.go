@@ -22,6 +22,16 @@ const (
 	ExitFailure = 1
 )
 
+// ASCII art banner for the CLI
+const banner = `
+    _         _   _     _  __          ____                   
+   / \  _   _| |_| |__ | |/ /___ _   _/ ___| _   _ _ __   ___ 
+  / _ \| | | | __| '_ \| ' // _ \ | | \___ \| | | | '_ \ / __|
+ / ___ \ |_| | |_| | | | . \  __/ |_| |___) | |_| | | | | (__ 
+/_/   \_\__,_|\__|_| |_|_|\_\___|\__, |____/ \__, |_| |_|\___|
+                                 |___/       |___/            
+`
+
 func main() {
 	os.Exit(run())
 }
@@ -34,8 +44,10 @@ func run() int {
 	debug := flag.Bool("debug", false, "Enable debug logging")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "AuthKeySync - SSH Public Key Synchronization Tool\n\n")
-		fmt.Fprintf(os.Stderr, "Usage: authkeysync [options]\n\n")
+		fmt.Fprint(os.Stderr, banner)
+		fmt.Fprintf(os.Stderr, "\nSSH Public Key Synchronization Tool\n\n")
+		fmt.Fprintf(os.Stderr, "Usage:\n")
+		fmt.Fprintf(os.Stderr, "  authkeysync [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
@@ -45,15 +57,18 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "\nExit Codes:\n")
 		fmt.Fprintf(os.Stderr, "  0  Success (all users processed successfully or skipped)\n")
 		fmt.Fprintf(os.Stderr, "  1  Failure (at least one user failed to synchronize)\n")
+		fmt.Fprintf(os.Stderr, "\nMore info: https://github.com/eduardolat/authkeysync\n")
 	}
 
 	flag.Parse()
 
 	// Show version and exit
 	if *showVersion {
-		fmt.Printf("AuthKeySync %s\n", version.Version)
-		fmt.Printf("  Commit: %s\n", version.Commit)
-		fmt.Printf("  Built:  %s\n", version.Date)
+		fmt.Print(banner)
+		fmt.Printf("  Version: %s\n", version.Version)
+		fmt.Printf("  Commit:  %s\n", version.Commit)
+		fmt.Printf("  Built:   %s\n", version.Date)
+		fmt.Println()
 		return ExitSuccess
 	}
 
