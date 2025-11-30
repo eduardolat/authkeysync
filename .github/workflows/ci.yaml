@@ -1,0 +1,23 @@
+name: CI
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+jobs:
+  ci:
+    name: Run CI Task
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure .ssh directory exists even if it's empty
+        run: mkdir -p /home/runner/.ssh
+
+      - name: Run CI Task
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: /bin/bash -c "task ci"
