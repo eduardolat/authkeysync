@@ -1,0 +1,30 @@
+# AuthKeySync Example Configuration
+# See README.md and SPEC.md for full documentation
+
+policy:
+  backup_enabled: true
+  backup_retention_count: 10
+  preserve_local_keys: true
+
+users:
+  # Example: Sync keys from GitHub
+  - username: "root"
+    sources:
+      - url: "https://github.com/torvalds.keys"
+
+  # Example: Multiple sources for a user
+  # - username: "admin"
+  #   sources:
+  #     - url: "https://github.com/admin.keys"
+  #     - url: "https://gitlab.com/admin.keys"
+
+  # Example: POST with authentication
+  # - username: "deploy"
+  #   sources:
+  #     - url: "https://vault.internal/v1/ssh/keys"
+  #       method: "POST"
+  #       timeout_seconds: 5
+  #       headers:
+  #         Authorization: "Bearer YOUR_TOKEN"
+  #         Content-Type: "application/json"
+  #       body: '{"role": "deployment"}'
