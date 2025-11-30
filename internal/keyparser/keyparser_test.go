@@ -193,7 +193,7 @@ func (r *errorReader) Read(p []byte) (n int, err error) {
 
 func TestParse_LargeContent(t *testing.T) {
 	var builder strings.Builder
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		builder.WriteString("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGit user")
 		builder.WriteString(string(rune('0' + i%10)))
 		builder.WriteString("@host\n")
