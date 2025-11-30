@@ -1,0 +1,29 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  run:
+    cmds:
+      - task: build
+      - task: exec
+
+  build:
+    cmd: go build -o dist/authkeysync ./cmd
+
+  exec:
+    cmd: ./dist/authkeysync
+
+  fmt:
+    cmds:
+      - go fmt ./...
+      - dprint fmt
+
+  lint:
+    cmds:
+      - golangci-lint run
+      - dprint check
+
+  test:
+    cmds:
+      - go test -V ./...
