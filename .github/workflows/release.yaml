@@ -1,0 +1,39 @@
+name: Release Build and Upload
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-upload:
+    name: Build and Upload to Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for git describe
+
+      - name: Setup SSH directory
+        run: mkdir -p /home/runner/.ssh
+
+      - name: Run tests, lint and build
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            task deps &&
+            task lint &&
+            task test &&
+            task build-all
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/authkeysync-linux-amd64
+            ./dist/authkeysync-linux-arm64
+            ./dist/authkeysync-darwin-amd64
+            ./dist/authkeysync-darwin-arm64

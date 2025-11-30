@@ -2,11 +2,23 @@
 
 version: "3"
 
+vars:
+  VERSION:
+    sh: git describe --tags --abbrev=0 2>/dev/null || echo "dev"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  DATE:
+    sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
+  LDFLAGS: >-
+    -s -w
+    -X github.com/eduardolat/authkeysync/internal/version.Version={{.VERSION}}
+    -X github.com/eduardolat/authkeysync/internal/version.Commit={{.COMMIT}}
+    -X github.com/eduardolat/authkeysync/internal/version.Date={{.DATE}}
+
 tasks:
   ci:
     cmds:
       - task: deps
-      - task: fmt
       - task: build
       - task: lint
       - task: test
@@ -21,21 +33,62 @@ tasks:
       - task: exec
 
   build:
-    cmd: go build -o dist/authkeysync ./cmd
+    desc: Build the binary for the current platform
+    cmd: CGO_ENABLED=0 go build -ldflags "{{.LDFLAGS}}" -o dist/authkeysync ./cmd
 
   exec:
     cmd: ./dist/authkeysync
 
   fmt:
+    desc: Format all code
     cmds:
       - go fmt ./...
       - dprint fmt
 
   lint:
+    desc: Run all linters including format check
     cmds:
+      - test -z "$(gofmt -l .)" || (echo "Code is not formatted. Run 'task fmt'" && exit 1)
       - golangci-lint run
       - dprint check
 
   test:
     cmds:
       - go test -v ./...
+
+  # Cross-compilation targets for release builds
+  build-all:
+    desc: Build binaries for all supported platforms
+    cmds:
+      - task: build-linux-amd64
+      - task: build-linux-arm64
+      - task: build-darwin-amd64
+      - task: build-darwin-arm64
+
+  build-linux-amd64:
+    desc: Build for Linux AMD64
+    cmd: >-
+      CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+      go build -ldflags "{{.LDFLAGS}}" -o dist/authkeysync-linux-amd64 ./cmd
+
+  build-linux-arm64:
+    desc: Build for Linux ARM64
+    cmd: >-
+      CGO_ENABLED=0 GOOS=linux GOARCH=arm64
+      go build -ldflags "{{.LDFLAGS}}" -o dist/authkeysync-linux-arm64 ./cmd
+
+  build-darwin-amd64:
+    desc: Build for macOS AMD64
+    cmd: >-
+      CGO_ENABLED=0 GOOS=darwin GOARCH=amd64
+      go build -ldflags "{{.LDFLAGS}}" -o dist/authkeysync-darwin-amd64 ./cmd
+
+  build-darwin-arm64:
+    desc: Build for macOS ARM64 (Apple Silicon)
+    cmd: >-
+      CGO_ENABLED=0 GOOS=darwin GOARCH=arm64
+      go build -ldflags "{{.LDFLAGS}}" -o dist/authkeysync-darwin-arm64 ./cmd
+
+  clean:
+    desc: Remove build artifacts
+    cmd: rm -rf dist/
