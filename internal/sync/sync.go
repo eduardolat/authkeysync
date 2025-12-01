@@ -346,14 +346,6 @@ func (s *Syncer) buildContent(info *userinfo.UserInfo, fetchResults []*keyfetche
 	return []byte(builder.String()), stats
 }
 
-// truncateKey truncates a key for logging purposes
-func truncateKey(key string, maxLen int) string {
-	if len(key) <= maxLen {
-		return key
-	}
-	return key[:maxLen-3] + "..."
-}
-
 // keyFingerprint computes a SHA256 fingerprint of an SSH key line for visual identification.
 // Returns a short fingerprint like "SHA256:a1b2c3d4e5f6a7b8" based on the entire line.
 func keyFingerprint(line string) string {

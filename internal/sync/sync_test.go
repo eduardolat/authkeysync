@@ -468,41 +468,6 @@ func TestSyncUser_BackupCreation(t *testing.T) {
 	assert.Equal(t, existingContent, string(backupContent))
 }
 
-func TestTruncateKey(t *testing.T) {
-	tests := []struct {
-		name     string
-		key      string
-		maxLen   int
-		expected string
-	}{
-		{
-			name:     "short key",
-			key:      "ssh-ed25519 AAAA",
-			maxLen:   60,
-			expected: "ssh-ed25519 AAAA",
-		},
-		{
-			name:     "exactly max length",
-			key:      "1234567890",
-			maxLen:   10,
-			expected: "1234567890",
-		},
-		{
-			name:     "truncated",
-			key:      "ssh-ed25519 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA user@host",
-			maxLen:   30,
-			expected: "ssh-ed25519 AAAAAAAAAAAAAAA...",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := truncateKey(tt.key, tt.maxLen)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestNew(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
