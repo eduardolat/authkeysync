@@ -3,6 +3,7 @@ package sync
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -35,7 +36,7 @@ func New(cfg *config.Config, logger *slog.Logger, dryRun bool) *Syncer {
 	return &Syncer{
 		cfg:           cfg,
 		logger:        logger,
-		fetcher:       keyfetcher.New(),
+		fetcher:       keyfetcher.NewWithLogger(logger),
 		backupManager: backup.New(),
 		fileWriter:    sshfile.New(),
 		userLookup:    &userinfo.SystemLookupProvider{},
@@ -83,6 +84,13 @@ func (s *Syncer) Run(ctx context.Context) *SyncResult {
 
 // syncUser synchronizes keys for a single user
 func (s *Syncer) syncUser(ctx context.Context, user config.User) UserResult {
+	start := s.timeNow()
+	defer func() {
+		s.logger.Debug("user sync finished",
+			"username", user.Username,
+			"duration_ms", time.Since(start).Milliseconds())
+	}()
+
 	result := UserResult{Username: user.Username}
 
 	s.logger.Info("processing user", "username", user.Username)
@@ -91,22 +99,25 @@ func (s *Syncer) syncUser(ctx context.Context, user config.User) UserResult {
 	info, err := s.userLookup.Lookup(user.Username)
 	if err != nil {
 		if errors.Is(err, userinfo.ErrUserNotFound) {
-			s.logger.Warn("user not found in system, skipping",
-				"username", user.Username)
+			s.logger.Warn("skipping user sync: system user lookup failed",
+				"username", user.Username,
+				"reason", "user does not exist in system")
 			result.Skipped = true
 			result.SkipReason = "user not found in system"
 			return result
 		}
 		if errors.Is(err, userinfo.ErrSSHDirNotFound) {
-			s.logger.Warn(".ssh directory not found, skipping",
-				"username", user.Username)
+			s.logger.Warn("skipping user sync: SSH directory not available",
+				"username", user.Username,
+				"reason", ".ssh directory does not exist")
 			result.Skipped = true
 			result.SkipReason = ".ssh directory not found"
 			return result
 		}
 		if errors.Is(err, userinfo.ErrSSHDirNotDir) {
-			s.logger.Warn(".ssh exists but is not a directory, skipping",
-				"username", user.Username)
+			s.logger.Warn("skipping user sync: SSH directory invalid",
+				"username", user.Username,
+				"reason", ".ssh exists but is not a directory")
 			result.Skipped = true
 			result.SkipReason = ".ssh exists but is not a directory"
 			return result
@@ -147,7 +158,7 @@ func (s *Syncer) syncUser(ctx context.Context, user config.User) UserResult {
 	for _, dup := range stats.Duplicates {
 		s.logger.Info("duplicate key found",
 			"username", user.Username,
-			"key_preview", truncateKey(dup.Key, 60),
+			"key_fingerprint", keyFingerprint(dup.Key),
 			"first_source", dup.FirstSource,
 			"duplicate_source", dup.DuplicateSource)
 	}
@@ -341,4 +352,14 @@ func truncateKey(key string, maxLen int) string {
 		return key
 	}
 	return key[:maxLen-3] + "..."
+}
+
+// keyFingerprint computes a SHA256 fingerprint of an SSH key line for visual identification.
+// Returns a short fingerprint like "SHA256:a1b2c3d4e5f6a7b8" based on the entire line.
+func keyFingerprint(line string) string {
+	if line == "" {
+		return "(empty)"
+	}
+	hash := sha256.Sum256([]byte(line))
+	return fmt.Sprintf("SHA256:%x", hash[:8])
 }

@@ -12,8 +12,24 @@ authkeysync [options]
 | ----------------- | ------------------------------------------------------------- |
 | `--config <path>` | Path to config file (default: `/etc/authkeysync/config.yaml`) |
 | `--dry-run`       | Simulate sync without modifying any files                     |
+| `--debug`         | Enable debug logging (most verbose)                           |
+| `--quiet`         | Show only warnings and errors (recommended for cron)          |
+| `--silent`        | Show only errors (most quiet)                                 |
 | `--version`       | Show version information and exit                             |
 | `--help`          | Show help message                                             |
+
+### Log Levels
+
+AuthKeySync supports four log levels to control output verbosity:
+
+| Level      | Shows                             | Use Case                                  |
+| ---------- | --------------------------------- | ----------------------------------------- |
+| (default)  | Info, warnings, and errors        | Normal interactive use                    |
+| `--debug`  | All messages including debug info | Troubleshooting and development           |
+| `--quiet`  | Only warnings and errors          | Cron jobs and scheduled tasks             |
+| `--silent` | Only errors                       | Minimal output, monitoring via exit codes |
+
+**Tip:** Use `--quiet` for cron jobs to reduce log noise while still being notified of issues.
 
 ## Basic Usage
 
@@ -60,11 +76,11 @@ Use these codes for monitoring and alerting.
 
 ### Cron Job
 
-Create a cron job to run AuthKeySync periodically:
+Create a cron job to run AuthKeySync periodically. Use `--quiet` to reduce log noise while still logging warnings and errors:
 
 ```bash
-# Run every 5 minutes
-echo "*/5 * * * * root /usr/local/bin/authkeysync" | sudo tee /etc/cron.d/authkeysync
+# Run every 5 minutes (recommended: use --quiet for cron)
+echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" | sudo tee /etc/cron.d/authkeysync
 ```
 
 Or edit root's crontab directly:
@@ -76,8 +92,8 @@ sudo crontab -e
 Add:
 
 ```cron
-# Sync SSH keys every 5 minutes
-*/5 * * * * /usr/local/bin/authkeysync >> /var/log/authkeysync.log 2>&1
+# Sync SSH keys every 5 minutes (--quiet shows only warnings and errors)
+*/5 * * * * /usr/local/bin/authkeysync --quiet >> /var/log/authkeysync.log 2>&1
 ```
 
 ### Systemd Timer
@@ -94,7 +110,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/authkeysync
+ExecStart=/usr/local/bin/authkeysync --quiet
 StandardOutput=journal
 StandardError=journal
 ```
@@ -159,8 +175,8 @@ runcmd:
   # Run initial sync
   - /usr/local/bin/authkeysync
 
-  # Setup cron job
-  - echo "*/5 * * * * root /usr/local/bin/authkeysync" > /etc/cron.d/authkeysync
+  # Setup cron job (--quiet for less noise in logs)
+  - echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" > /etc/cron.d/authkeysync
 ```
 
 ### Ansible
@@ -199,7 +215,7 @@ runcmd:
       cron:
         name: "AuthKeySync"
         minute: "*/5"
-        job: "/usr/local/bin/authkeysync"
+        job: "/usr/local/bin/authkeysync --quiet"
         user: root
 
     - name: Run initial sync
@@ -230,7 +246,7 @@ resource "aws_instance" "web" {
     EOC
 
     /usr/local/bin/authkeysync
-    echo "*/5 * * * * root /usr/local/bin/authkeysync" > /etc/cron.d/authkeysync
+    echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" > /etc/cron.d/authkeysync
   EOF
 }
 ```

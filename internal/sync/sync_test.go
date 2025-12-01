@@ -516,3 +516,47 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, syncer.userLookup)
 	assert.False(t, syncer.dryRun)
 }
+
+func TestKeyFingerprint(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      string
+		expected string // If not empty, expects exact match; otherwise expects SHA256:...
+	}{
+		{
+			name: "valid ed25519 key",
+			key:  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGit user@host",
+		},
+		{
+			name: "valid rsa key",
+			key:  "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQ user@host",
+		},
+		{
+			name: "key with options",
+			key:  "restrict,port-forwarding ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGit user@host",
+		},
+		{
+			name: "single field",
+			key:  "invalid",
+		},
+		{
+			name:     "empty key",
+			key:      "",
+			expected: "(empty)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := keyFingerprint(tt.key)
+			if tt.expected != "" {
+				assert.Equal(t, tt.expected, result)
+			} else {
+				assert.True(t, strings.HasPrefix(result, "SHA256:"),
+					"expected SHA256: prefix, got: %s", result)
+				// SHA256: followed by 16 hex characters (8 bytes)
+				assert.Len(t, result, 23) // "SHA256:" (7) + 16 hex chars
+			}
+		})
+	}
+}

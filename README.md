@@ -109,8 +109,8 @@ sudo authkeysync
 Set up a cron job or systemd timer to run periodically:
 
 ```bash
-# Every 5 minutes
-echo "*/5 * * * * root /usr/local/bin/authkeysync" | sudo tee /etc/cron.d/authkeysync
+# Every 5 minutes (use --quiet to reduce log noise in cron)
+echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" | sudo tee /etc/cron.d/authkeysync
 ```
 
 ## Configuration Options
@@ -170,6 +170,9 @@ users:
 | ----------------- | ------------------------------------------------------------- |
 | `--config <path>` | Path to config file (default: `/etc/authkeysync/config.yaml`) |
 | `--dry-run`       | Simulate sync without modifying any files                     |
+| `--debug`         | Enable debug logging (most verbose)                           |
+| `--quiet`         | Show only warnings and errors (recommended for cron)          |
+| `--silent`        | Show only errors (most quiet)                                 |
 | `--version`       | Show version information and exit                             |
 | `--help`          | Show help message                                             |
 

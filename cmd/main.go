@@ -41,7 +41,9 @@ func run() int {
 	configPath := flag.String("config", config.DefaultConfigPath, "Path to the configuration file")
 	dryRun := flag.Bool("dry-run", false, "Simulate sync without modifying files")
 	showVersion := flag.Bool("version", false, "Show version information and exit")
-	debug := flag.Bool("debug", false, "Enable debug logging")
+	debug := flag.Bool("debug", false, "Enable debug logging (most verbose)")
+	quiet := flag.Bool("quiet", false, "Show only warnings and errors (for cron/scheduled tasks)")
+	silent := flag.Bool("silent", false, "Show only errors (most quiet)")
 
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, banner)
@@ -50,10 +52,16 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "  authkeysync [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nLog Levels:\n")
+		fmt.Fprintf(os.Stderr, "  (default)   Show info, warnings, and errors\n")
+		fmt.Fprintf(os.Stderr, "  --debug     Show all messages including debug details\n")
+		fmt.Fprintf(os.Stderr, "  --quiet     Show only warnings and errors (recommended for cron)\n")
+		fmt.Fprintf(os.Stderr, "  --silent    Show only errors\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  authkeysync                           # Use default config path\n")
 		fmt.Fprintf(os.Stderr, "  authkeysync --config /path/to/config  # Use custom config\n")
 		fmt.Fprintf(os.Stderr, "  authkeysync --dry-run                 # Simulate without changes\n")
+		fmt.Fprintf(os.Stderr, "  authkeysync --quiet                   # Run silently for cron jobs\n")
 		fmt.Fprintf(os.Stderr, "\nExit Codes:\n")
 		fmt.Fprintf(os.Stderr, "  0  Success (all users processed successfully or skipped)\n")
 		fmt.Fprintf(os.Stderr, "  1  Failure (at least one user failed to synchronize)\n")
@@ -72,10 +80,17 @@ func run() int {
 		return ExitSuccess
 	}
 
-	// Setup logger
-	logLevel := slog.LevelInfo
-	if *debug {
-		logLevel = slog.LevelDebug
+	// Setup logger with hierarchy: debug > default > quiet > silent
+	var logLevel slog.Level
+	switch {
+	case *debug:
+		logLevel = slog.LevelDebug // Shows everything (-4)
+	case *silent:
+		logLevel = slog.LevelError // Only errors (8)
+	case *quiet:
+		logLevel = slog.LevelWarn // Warnings and errors (4)
+	default:
+		logLevel = slog.LevelInfo // Normal operation (0)
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
@@ -135,16 +150,20 @@ func run() int {
 		}
 	}
 
-	logger.Info("synchronization complete",
-		"success", successCount,
-		"skipped", skippedCount,
-		"failed", failedCount)
-
-	if result.HasErrors {
+	// Use appropriate log level for summary based on outcome
+	if failedCount > 0 {
+		logger.Warn("synchronization complete with failures",
+			"success", successCount,
+			"skipped", skippedCount,
+			"failed", failedCount)
 		logger.Error("some users failed to synchronize")
 		return ExitFailure
 	}
 
+	logger.Info("synchronization complete",
+		"success", successCount,
+		"skipped", skippedCount,
+		"failed", failedCount)
 	logger.Info("all users processed successfully")
 	return ExitSuccess
 }

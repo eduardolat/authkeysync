@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -36,12 +37,22 @@ type FetchResult struct {
 // Fetcher fetches SSH keys from remote sources
 type Fetcher struct {
 	client *http.Client
+	logger *slog.Logger
 }
 
-// New creates a new Fetcher with the default HTTP client
+// New creates a new Fetcher with the default HTTP client and a no-op logger
 func New() *Fetcher {
 	return &Fetcher{
 		client: &http.Client{},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+}
+
+// NewWithLogger creates a new Fetcher with the default HTTP client and a logger
+func NewWithLogger(logger *slog.Logger) *Fetcher {
+	return &Fetcher{
+		client: &http.Client{},
+		logger: logger,
 	}
 }
 
@@ -49,6 +60,15 @@ func New() *Fetcher {
 func NewWithClient(client *http.Client) *Fetcher {
 	return &Fetcher{
 		client: client,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+}
+
+// NewWithClientAndLogger creates a new Fetcher with a custom HTTP client and logger
+func NewWithClientAndLogger(client *http.Client, logger *slog.Logger) *Fetcher {
+	return &Fetcher{
+		client: client,
+		logger: logger,
 	}
 }
 
@@ -91,6 +111,13 @@ func (f *Fetcher) Fetch(ctx context.Context, source config.Source) *FetchResult 
 	for key, value := range source.Headers {
 		req.Header.Set(key, value)
 	}
+
+	// Log request details for debugging
+	f.logger.Debug("executing HTTP request",
+		"url", source.URL,
+		"method", source.GetMethod(),
+		"user_agent", req.Header.Get("User-Agent"),
+		"timeout_seconds", source.GetTimeoutSeconds())
 
 	// Execute request
 	resp, err := f.client.Do(req)
