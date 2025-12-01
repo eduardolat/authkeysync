@@ -1,12 +1,28 @@
 site_name: AuthKeySync
+site_description: Synchronize SSH public keys from remote URLs
 site_url: https://eduardolat.github.io/authkeysync
 repo_url: https://github.com/eduardolat/authkeysync
 repo_name: eduardolat/authkeysync
+
+nav:
+  - Quick Start: index.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Usage: usage.md
+  - Reference:
+      - Technical Specification: spec.md
 
 theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo-square.png
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - content.code.copy
+    - content.code.annotate
+
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
@@ -14,7 +30,7 @@ theme:
       accent: blue
       toggle:
         icon: material/brightness-auto
-        name: Switch to automatic mode
+        name: Switch to light mode
 
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
@@ -32,4 +48,24 @@ theme:
       accent: blue
       toggle:
         icon: material/brightness-4
-        name: Switch to light mode
+        name: Switch to automatic mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/eduardolat/authkeysync
+    - icon: fontawesome/brands/x-twitter
+      link: https://eduardo.lat/x
