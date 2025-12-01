@@ -12,9 +12,6 @@
   <a href="https://github.com/eduardolat/authkeysync/actions/workflows/ci.yaml?query=branch%3Amain">
     <img src="https://github.com/eduardolat/authkeysync/actions/workflows/ci.yaml/badge.svg" alt="CI Status"/>
   </a>
-  <a href="https://pkg.go.dev/github.com/eduardolat/authkeysync">
-    <img src="https://pkg.go.dev/badge/github.com/eduardolat/authkeysync" alt="Go Reference"/>
-  </a>
   <a href="https://goreportcard.com/report/github.com/eduardolat/authkeysync">
     <img src="https://goreportcard.com/badge/github.com/eduardolat/authkeysync" alt="Go Report Card"/>
   </a>
