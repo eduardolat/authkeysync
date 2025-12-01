@@ -5,7 +5,7 @@ repo_url: https://github.com/eduardolat/authkeysync
 repo_name: eduardolat/authkeysync
 
 nav:
-  - Quick Start: index.md
+  - Quick Start: quick-start.md
   - Installation: installation.md
   - Configuration: configuration.md
   - Usage: usage.md
