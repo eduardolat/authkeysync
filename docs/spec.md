@@ -1,8 +1,8 @@
-# AuthKeySync Technical Specification
+# Technical Specification
 
 **Target Architecture:** Linux & macOS (POSIX Compliant)
 
-## 1. Executive Summary
+## 1. Summary
 
 **AuthKeySync** is a lightweight, high-integrity CLI utility designed to synchronize SSH public keys from remote URLs into local `authorized_keys` files.
 

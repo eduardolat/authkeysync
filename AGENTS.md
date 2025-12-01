@@ -1,6 +1,6 @@
 # AuthKeySync LLM Agents Instructions
 
-Before you start, please read the [SPEC.md](SPEC.md) file to understand the specification of the project.
+Before you start, please read the [docs/spec.md](docs/spec.md) file to understand the specification of the project.
 
 ## Project structure
 
