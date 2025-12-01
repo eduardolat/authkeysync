@@ -29,6 +29,12 @@ jobs:
             task test &&
             task build-all
 
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
@@ -37,3 +43,4 @@ jobs:
             ./dist/authkeysync-linux-arm64
             ./dist/authkeysync-darwin-amd64
             ./dist/authkeysync-darwin-arm64
+            ./dist/checksums.txt
