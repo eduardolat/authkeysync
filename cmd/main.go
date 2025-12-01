@@ -65,9 +65,9 @@ func run() int {
 	// Show version and exit
 	if *showVersion {
 		fmt.Print(banner)
-		fmt.Printf("  Version: %s\n", version.Version)
-		fmt.Printf("  Commit:  %s\n", version.Commit)
-		fmt.Printf("  Built:   %s\n", version.Date)
+		fmt.Printf("Version: %s\n", version.Version)
+		fmt.Printf("Commit:  %s\n", version.Commit)
+		fmt.Printf("Built:   %s\n", version.Date)
 		fmt.Println()
 		return ExitSuccess
 	}

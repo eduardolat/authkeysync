@@ -54,9 +54,9 @@ You should see output like:
 /_/   \_\__,_|\__|_| |_|_|\_\___|\__, |____/ \__, |_| |_|\___|
                                  |___/       |___/            
 
-  Version: v0.0.0
-  Commit:  abc1234
-  Built:   yyyy-mm-dd
+Version: v0.0.0
+Commit:  abc1234
+Built:   ISO 8601 timestamp (UTC)
 ```
 
 ## Platform Support
