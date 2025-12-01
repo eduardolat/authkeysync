@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/eduardolat/authkeysync/internal/config"
@@ -37,6 +38,16 @@ func main() {
 }
 
 func run() int {
+	// Check platform - AuthKeySync only supports Linux and macOS
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		fmt.Fprintf(os.Stderr, "Error: AuthKeySync is only supported on Linux and macOS.\n")
+		fmt.Fprintf(os.Stderr, "Current platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		fmt.Fprintf(os.Stderr, "Windows is not supported because this tool requires POSIX-specific\n")
+		fmt.Fprintf(os.Stderr, "features such as file ownership (chown), Unix permissions, and\n")
+		fmt.Fprintf(os.Stderr, "atomic file operations that are not available on Windows.\n")
+		return ExitFailure
+	}
+
 	// Define CLI flags
 	configPath := flag.String("config", config.DefaultConfigPath, "Path to the configuration file")
 	dryRun := flag.Bool("dry-run", false, "Simulate sync without modifying files")
