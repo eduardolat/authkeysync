@@ -1,0 +1,1134 @@
+# AuthKeySync
+
+> Synchronize SSH public keys from remote URLs
+
+# Full documentation
+
+# Quick Start
+
+**AuthKeySync** is a lightweight CLI utility that fetches SSH public keys from remote URLs (GitHub, GitLab, or any API) and syncs them to the `authorized_keys` files on your servers.
+
+This is a quick start guide to get you up and running. For more details, see:
+
+- [Installation](https://eduardolat.github.io/authkeysync/installation/index.md): All download options and platform support
+- [Configuration](https://eduardolat.github.io/authkeysync/configuration/index.md): Complete reference for all options
+- [Usage](https://eduardolat.github.io/authkeysync/usage/index.md): CLI options, automation, and troubleshooting
+- [Technical Specification](https://eduardolat.github.io/authkeysync/spec/index.md): Full technical details and behavior
+
+## Why AuthKeySync?
+
+Managing SSH keys manually is tedious and error-prone:
+
+- When someone joins your team, you add their key to 20 servers
+- When someone leaves, you hope you remembered all the places their key exists
+- When someone rotates their key, the cycle repeats
+- Homemade bash scripts for this are often poorly written, insecure, or have subtle bugs that can lock you out
+
+With AuthKeySync, you define your key sources once in a YAML file and let it handle the rest. When someone rotates their GitHub SSH key, all servers pick up the change on the next sync.
+
+## Install
+
+Download the binary for your platform from the [releases page](https://github.com/eduardolat/authkeysync/releases):
+
+```
+# Linux AMD64
+curl -Lo authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-linux-amd64
+chmod +x authkeysync
+sudo mv authkeysync /usr/local/bin/
+```
+
+Other platforms: Linux ARM64, macOS Intel, macOS Apple Silicon. See [Installation](https://eduardolat.github.io/authkeysync/installation/index.md) for details.
+
+## Configure
+
+Create `/etc/authkeysync/config.yaml`:
+
+```
+policy:
+  backup_enabled: true # Create backups before changes (default: true)
+  backup_retention_count: 10 # Number of backups to keep (default: 10)
+  preserve_local_keys: true # Keep keys not in remote sources (default: true)
+
+users:
+  - username: "root"
+    sources:
+      - url: "https://github.com/your-username.keys"
+      - url: "https://github.com/another-username.keys"
+```
+
+### All Configuration Options
+
+**Policy** (all fields optional, shown with defaults):
+
+| Option                   | Type | Default | Description                                       |
+| ------------------------ | ---- | ------- | ------------------------------------------------- |
+| `backup_enabled`         | bool | `true`  | Create backups before modifying `authorized_keys` |
+| `backup_retention_count` | int  | `10`    | Number of backup files to keep per user           |
+| `preserve_local_keys`    | bool | `true`  | Keep existing keys that are not in remote sources |
+
+**Users** (required):
+
+| Option     | Type   | Required | Description                              |
+| ---------- | ------ | -------- | ---------------------------------------- |
+| `username` | string | Yes      | System username (e.g., `root`, `deploy`) |
+| `sources`  | list   | Yes      | List of key sources                      |
+
+**Sources**:
+
+| Option            | Type   | Default    | Description                                    |
+| ----------------- | ------ | ---------- | ---------------------------------------------- |
+| `url`             | string | (required) | URL that returns plain text SSH keys           |
+| `method`          | string | `GET`      | HTTP method: `GET` or `POST`                   |
+| `headers`         | map    | `{}`       | Custom HTTP headers (e.g., for authentication) |
+| `body`            | string | `""`       | Request body for POST requests                 |
+| `timeout_seconds` | int    | `10`       | Request timeout in seconds                     |
+
+See [Configuration](https://eduardolat.github.io/authkeysync/configuration/index.md) for more examples.
+
+## Run
+
+```
+# Test first (no changes made)
+sudo authkeysync --dry-run
+
+# Apply changes
+sudo authkeysync
+```
+
+### CLI Options
+
+| Option            | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `--config <path>` | Path to config file (default: `/etc/authkeysync/config.yaml`) |
+| `--dry-run`       | Simulate sync without modifying any files                     |
+| `--debug`         | Enable debug logging (most verbose)                           |
+| `--quiet`         | Show only warnings and errors (recommended for cron)          |
+| `--silent`        | Show only errors (most quiet)                                 |
+| `--version`       | Show version information                                      |
+| `--help`          | Show help message                                             |
+
+See [Usage](https://eduardolat.github.io/authkeysync/usage/index.md) for automation, monitoring, and troubleshooting.
+
+## Automate
+
+Set up a cron job to run periodically (use `--quiet` to reduce log noise):
+
+```
+# Every 5 minutes (--quiet shows only warnings and errors)
+echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" | sudo tee /etc/cron.d/authkeysync
+```
+
+See [Usage](https://eduardolat.github.io/authkeysync/usage/index.md) for systemd timers, cloud-init, Ansible, and Terraform examples.
+
+## How It Works
+
+1. **Fetch**: Downloads keys from all configured URLs
+1. **Parse**: Validates SSH key format and removes duplicates
+1. **Merge**: Combines remote keys with local keys (if enabled)
+1. **Write**: Atomically updates `authorized_keys` with proper permissions
+
+If any fetch fails, AuthKeySync **aborts the update for that user** to prevent accidental lockouts.
+
+For complete technical details about parsing rules, deduplication logic, atomic writes, and backup management, see the [Technical Specification](https://eduardolat.github.io/authkeysync/spec/index.md).
+
+## Next Steps
+
+- **[Installation](https://eduardolat.github.io/authkeysync/installation/index.md)**: All download options and platform support
+- **[Configuration](https://eduardolat.github.io/authkeysync/configuration/index.md)**: Complete reference for all options
+- **[Usage](https://eduardolat.github.io/authkeysync/usage/index.md)**: CLI options, automation, and troubleshooting
+- **[Technical Specification](https://eduardolat.github.io/authkeysync/spec/index.md)**: Full technical details and behavior
+
+# Configuration
+
+AuthKeySync is configured via a YAML file. By default, it looks for `/etc/authkeysync/config.yaml`.
+
+## Basic Example
+
+```
+policy:
+  backup_enabled: true
+  preserve_local_keys: true
+
+users:
+  - username: "root"
+    sources:
+      - url: "https://github.com/your-username.keys"
+```
+
+## Complete Reference
+
+### Policy Section
+
+The `policy` section defines global behavior for all users. All fields are optional and have sensible defaults.
+
+| Option                   | Type | Default | Description                                       |
+| ------------------------ | ---- | ------- | ------------------------------------------------- |
+| `backup_enabled`         | bool | `true`  | Create backups before modifying `authorized_keys` |
+| `backup_retention_count` | int  | `10`    | Number of backup files to keep per user           |
+| `preserve_local_keys`    | bool | `true`  | Keep existing keys that are not in remote sources |
+
+#### About `preserve_local_keys`
+
+This is a critical safety setting:
+
+- **`true` (default)**: Keys that exist locally but not in any remote source are preserved. This prevents accidental lockouts if you have manually added keys.
+- **`false`**: The `authorized_keys` file will contain **only** the keys from remote sources. Any manually added keys will be removed.
+
+Be careful with `preserve_local_keys: false`
+
+Setting this to `false` means remote sources become the single source of truth. If a source is misconfigured or returns empty, you could lose access.
+
+### Users Section
+
+The `users` section is a list of system users to manage.
+
+| Option     | Type   | Required | Description                              |
+| ---------- | ------ | -------- | ---------------------------------------- |
+| `username` | string | Yes      | System username (e.g., `root`, `deploy`) |
+| `sources`  | list   | Yes      | List of key sources (see below)          |
+
+### Sources
+
+Each source defines where to fetch SSH keys from.
+
+| Option            | Type   | Default    | Description                          |
+| ----------------- | ------ | ---------- | ------------------------------------ |
+| `url`             | string | (required) | URL that returns plain text SSH keys |
+| `method`          | string | `GET`      | HTTP method: `GET` or `POST`         |
+| `headers`         | map    | `{}`       | Custom HTTP headers                  |
+| `body`            | string | `""`       | Request body for POST requests       |
+| `timeout_seconds` | int    | `10`       | Request timeout in seconds           |
+
+## Common Configurations
+
+### GitHub Keys
+
+GitHub exposes public SSH keys at `https://github.com/{username}.keys`:
+
+```
+users:
+  - username: "deploy"
+    sources:
+      - url: "https://github.com/your-username.keys"
+      - url: "https://github.com/another-username.keys"
+      - url: "https://github.com/third-username.keys"
+```
+
+### GitLab Keys
+
+GitLab exposes public SSH keys at `https://gitlab.com/{username}.keys`:
+
+```
+users:
+  - username: "deploy"
+    sources:
+      - url: "https://gitlab.com/your-username.keys"
+```
+
+### Self-Hosted GitLab
+
+```
+users:
+  - username: "deploy"
+    sources:
+      - url: "https://gitlab.yourcompany.com/your-username.keys"
+```
+
+### Multiple Sources per User
+
+You can combine keys from multiple sources:
+
+```
+users:
+  - username: "admin"
+    sources:
+      # GitHub keys
+      - url: "https://github.com/your-username.keys"
+      # GitLab keys
+      - url: "https://gitlab.com/your-username.keys"
+      # Internal key server
+      - url: "https://keys.yourcompany.com/your-username"
+```
+
+### Private API with Authentication
+
+For internal key servers that require authentication:
+
+```
+users:
+  - username: "deploy"
+    sources:
+      - url: "https://vault.yourcompany.com/v1/ssh/keys"
+        method: "POST"
+        headers:
+          Authorization: "Bearer your-secret-token"
+          Content-Type: "application/json"
+        body: '{"role": "deployment", "environment": "prod"}'
+        timeout_seconds: 5
+```
+
+### Multiple Users
+
+```
+policy:
+  backup_enabled: true
+  preserve_local_keys: true
+  backup_retention_count: 5
+
+users:
+  - username: "root"
+    sources:
+      - url: "https://github.com/admin-username.keys"
+
+  - username: "deploy"
+    sources:
+      - url: "https://github.com/ci-bot-username.keys"
+      - url: "https://github.com/developer-username.keys"
+
+  - username: "backup"
+    sources:
+      - url: "https://keys.yourcompany.com/backup-service"
+        headers:
+          X-API-Key: "secret-key"
+```
+
+### Disabling Backups
+
+If you don't need backup files:
+
+```
+policy:
+  backup_enabled: false
+  preserve_local_keys: true
+
+users:
+  - username: "root"
+    sources:
+      - url: "https://github.com/your-username.keys"
+```
+
+### Strict Mode (Remote-Only Keys)
+
+To make remote sources the single source of truth:
+
+```
+policy:
+  backup_enabled: true
+  backup_retention_count: 20
+  preserve_local_keys: false
+
+users:
+  - username: "deploy"
+    sources:
+      - url: "https://github.com/team-lead-username.keys"
+```
+
+Warning
+
+With `preserve_local_keys: false`, any key not present in your sources will be **removed**. Make sure your sources are reliable before enabling this.
+
+## Output Format
+
+AuthKeySync generates a well-structured `authorized_keys` file:
+
+```
+# ──────────────────────────────────────────────────────────────────
+# Generated by AuthKeySync
+# Version:   vX.X.X
+# Commit:    <commit hash>
+# Built:     <ISO 8601 timestamp (UTC)>
+# Last sync: <ISO 8601 timestamp (UTC)>
+# More info: https://github.com/eduardolat/authkeysync
+# ──────────────────────────────────────────────────────────────────
+
+# Source: https://github.com/your-username.keys
+ssh-ed25519 AAAA... user@laptop
+
+# Source: https://github.com/another-username.keys
+ssh-rsa AAAA... user@workstation
+
+# Local (preserved)
+ssh-ed25519 AAAA... manually-added-key
+```
+
+## Backups
+
+When `backup_enabled: true`, AuthKeySync creates backups in:
+
+```
+~/.ssh/authorized_keys_backups/
+├── authorized_keys_20240115_103045_abcdef
+├── authorized_keys_20240115_093012_ghijkl
+└── authorized_keys_20240114_180022_mnopqr
+```
+
+Backups are only created when the content actually changes. The oldest files are automatically deleted based on `backup_retention_count`.
+
+## Validation
+
+AuthKeySync validates the configuration file on startup. Common errors:
+
+- **No users defined**: At least one user is required
+- **Empty username**: Username cannot be blank
+- **No sources**: Each user must have at least one source
+- **Empty URL**: Each source must have a URL
+- **Invalid method**: Only `GET` and `POST` are supported
+- **Invalid timeout**: Timeout must be positive
+
+## Environment Considerations
+
+### Permissions
+
+The config file may contain sensitive data (API tokens). Protect it:
+
+```
+sudo chmod 600 /etc/authkeysync/config.yaml
+```
+
+### Network Access
+
+Ensure your server can reach the configured URLs. For internal APIs, check:
+
+- Firewall rules
+- DNS resolution
+- Proxy settings (if applicable)
+
+### User Requirements
+
+For each configured user:
+
+1. The user must exist in the system
+1. The user must have a home directory
+1. The `~/.ssh/` directory must exist
+
+If any of these conditions are not met, AuthKeySync logs a warning and skips that user.
+
+## Next Steps
+
+- [Usage](https://eduardolat.github.io/authkeysync/usage/index.md): CLI options and automation
+- [Technical Specification](https://eduardolat.github.io/authkeysync/spec/index.md): Deep dive into behavior
+
+# Installation
+
+AuthKeySync is distributed as a single static binary with no external dependencies. Just download and run.
+
+## Download
+
+Download the appropriate binary for your system from the [GitHub Releases](https://github.com/eduardolat/authkeysync/releases) page.
+
+### Linux (AMD64)
+
+```
+curl -Lo authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-linux-amd64
+chmod +x authkeysync
+sudo mv authkeysync /usr/local/bin/
+```
+
+### Linux (ARM64)
+
+```
+curl -Lo authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-linux-arm64
+chmod +x authkeysync
+sudo mv authkeysync /usr/local/bin/
+```
+
+### macOS (Intel)
+
+```
+curl -Lo authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-darwin-amd64
+chmod +x authkeysync
+sudo mv authkeysync /usr/local/bin/
+```
+
+### macOS (Apple Silicon)
+
+```
+curl -Lo authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-darwin-arm64
+chmod +x authkeysync
+sudo mv authkeysync /usr/local/bin/
+```
+
+## Verify Installation
+
+```
+authkeysync --version
+```
+
+You should see output like:
+
+```
+    _         _   _     _  __          ____                   
+   / \  _   _| |_| |__ | |/ /___ _   _/ ___| _   _ _ __   ___ 
+  / _ \| | | | __| '_ \| ' // _ \ | | \___ \| | | | '_ \ / __|
+ / ___ \ |_| | |_| | | | . \  __/ |_| |___) | |_| | | | | (__ 
+/_/   \_\__,_|\__|_| |_|_|\_\___|\__, |____/ \__, |_| |_|\___|
+                                 |___/       |___/            
+
+Version: v0.0.0
+Commit:  abc1234
+Built:   ISO 8601 timestamp (UTC)
+```
+
+## Platform Support
+
+- **Operating System**: Linux or macOS
+- **Architecture**: AMD64 (x86_64) or ARM64 (aarch64)
+- **Permissions**: Root access required to modify other users' `authorized_keys`
+
+For each configured user, AuthKeySync requires the user to exist and have a `~/.ssh` directory. If a user or their `.ssh` directory doesn't exist, AuthKeySync will skip that user and continue with the next one.
+
+## Create Configuration Directory
+
+AuthKeySync expects its configuration at `/etc/authkeysync/config.yaml` by default:
+
+```
+sudo mkdir -p /etc/authkeysync
+```
+
+You can use a different config path with the `--config` flag:
+
+```
+authkeysync --config /path/to/your/config.yaml
+```
+
+## Next Steps
+
+- [Configuration](https://eduardolat.github.io/authkeysync/configuration/index.md): Set up your key sources
+- [Usage](https://eduardolat.github.io/authkeysync/usage/index.md): Run and automate AuthKeySync
+
+# Technical Specification
+
+**Target Architecture:** Linux & macOS (POSIX Compliant)
+
+## 1. Summary
+
+**AuthKeySync** is a lightweight, high-integrity CLI utility designed to synchronize SSH public keys from remote URLs into local `authorized_keys` files.
+
+Unlike complex configuration management agents, AuthKeySync follows the **Unix Philosophy**: it does one thing well (synchronization) and exits. It is architected for **Infrastructure as Code (IAC)** environments (but can be used everywhere and in any way), providing idempotency, atomic file operations, and zero-dependency portability.
+
+### Core Design Principles
+
+1. **Universal Portability:** The binary is statically compiled, ensuring it runs on any Linux distribution (Alpine, Debian, RHEL, NixOS, etc) or macOS version without requiring complex system libraries or other dependencies.
+1. **One-Shot Execution:** The tool is stateless. It executes a single synchronization cycle and terminates. Scheduling is delegated to the native OS facility (Systemd Timers, Cron, Launchd, etc).
+1. **Fail-Safe Isolation:** A failure in one user's synchronization process **must never** impact other users or corrupt existing access.
+
+### User Responsibilities
+
+AuthKeySync is designed to be as safe as possible: it uses atomic writes, preserves local keys by default, creates backups, and aborts on network errors. However, the tool **cannot validate the trustworthiness or correctness of remote sources**. The user is responsible for:
+
+1. **Source Trustworthiness:** Only configure sources that you control or fully trust. Sources must not be publicly editable (e.g., a wiki page, a public gist, or an unauthenticated API). A malicious actor with write access to a source can inject their own SSH keys and gain system access.
+1. **Source Content Validity:** Ensure that configured sources return valid SSH public keys in plain text format. AuthKeySync performs minimal structural validation but does not verify cryptographic correctness. Garbage in, garbage out.
+1. **Access Control:** Protect the AuthKeySync configuration file (`/etc/authkeysync/config.yaml`) with appropriate permissions. This file may contain sensitive information (API tokens, internal URLs) and defines who can access your systems.
+1. **Monitoring:** Monitor synchronization logs and exit codes. A persistent exit code `1` indicates a problem that requires attention.
+
+AuthKeySync's responsibility ends at correctly fetching, parsing, deduplicating, and atomically writing the keys. **The security of your sources is your responsibility.**
+
+## 2. Configuration Specification
+
+The application is configured exclusively via **YAML**.
+
+- **Default Path:** `/etc/authkeysync/config.yaml`
+- **CLI Override:** `authkeysync --config <path>`
+- **Dry Run Mode:** `authkeysync --dry-run` (simulates sync, prints actions without modifying files)
+
+### 2.1 Configuration Schema
+
+The configuration is divided into two sections: `policy` (global behavior) and `users` (target definitions).
+
+#### Section: `policy`
+
+Defines the safety rules for the synchronization process.
+
+| Field                    | Type | Required | Default | Description                                                                                                                                                                                         |
+| ------------------------ | ---- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backup_enabled`         | bool | No       | `true`  | If `true`, a backup of the existing `authorized_keys` is created before overwriting.                                                                                                                |
+| `backup_retention_count` | int  | No       | `10`    | Number of unique backup files to keep per user. Oldest files are deleted first.                                                                                                                     |
+| `preserve_local_keys`    | bool | No       | `true`  | **Critical.** If `true`, keys found in the local file that are absent from remote sources are **kept** (merged). If `false`, the local file is **overwritten** to exactly match the remote sources. |
+
+#### Section: `users`
+
+A list of system users to manage.
+
+| Field      | Type   | Required | Default | Description                                                |
+| ---------- | ------ | -------- | ------- | ---------------------------------------------------------- |
+| `username` | string | **Yes**  | N/A     | The exact system login name (e.g., `root`, `bob`, `john`). |
+| `sources`  | list   | **Yes**  | N/A     | A list of source objects (see below) to fetch keys from.   |
+
+#### Section: `users[].sources`
+
+Defines the HTTP endpoint for fetching keys.
+
+| Field             | Type   | Required | Default | Description                                                                     |
+| ----------------- | ------ | -------- | ------- | ------------------------------------------------------------------------------- |
+| `url`             | string | **Yes**  | N/A     | The remote URL. **Must return plain text** (standard `authorized_keys` format). |
+| `method`          | string | No       | `"GET"` | HTTP Method. Supported: `GET`, `POST`.                                          |
+| `headers`         | map    | No       | `{}`    | Key-Value map for custom headers (e.g., `Authorization`).                       |
+| `body`            | string | No       | `""`    | Raw string body payload for `POST` requests (used for auth/query parameters).   |
+| `timeout_seconds` | int    | No       | `10`    | Max duration to wait for this specific request.                                 |
+
+### 2.2 Example Configuration
+
+```
+policy:
+  backup_enabled: true
+  backup_retention_count: 10
+  preserve_local_keys: true # Safe default: do not delete manual keys
+
+users:
+  - username: "admin"
+    sources:
+      # Standard GitHub Keys (GET returning text/plain)
+      - url: "https://github.com/my-admin.keys"
+
+  - username: "deploy_bot"
+    sources:
+      # Corporate Vault/API (POST with Auth)
+      # RESPONSE MUST BE PLAIN TEXT KEYS (Not JSON)
+      - url: "https://vault.internal/v1/ssh/keys/raw"
+        method: "POST"
+        timeout_seconds: 5
+        headers:
+          Authorization: "Bearer SECRET_TOKEN_XYZ"
+          Content-Type: "application/json"
+        body: '{"role": "deployment", "env": "prod"}'
+```
+
+## 3. Operational Logic & Error Handling
+
+The application implements a **Blast Radius Containment** strategy.
+
+### 3.1 Validation Hierarchy
+
+1. **System Check:**
+1. If `username` does not exist in the OS → **Log Warning & SKIP User.**
+1. If user exists but the `.ssh` directory (inside the user's home directory) is missing or invalid → **Log Warning & SKIP User.**
+1. **Network Fetch:**
+1. The tool iterates through all `sources` for a user.
+1. **Logic:** If **ANY** source for a specific user fails (non-200 status, timeout, DNS error), the entire update for that user is marked as **FAILED**.
+1. **Action:** Log Error & **ABORT** update for this user. The existing `authorized_keys` file remains untouched.
+1. **User-Agent:** All HTTP requests include the header `User-Agent: AuthKeySync` by default. Some providers (corporate firewalls) block requests without a proper User-Agent. To use a custom User-Agent, specify it in the source's `headers` configuration (e.g., `User-Agent: "MyCompany-KeySync/2.0"`).
+
+### 3.2 Key Parsing Rules
+
+Content is processed as a plain text stream, parsed line-by-line. SSH public keys **never span multiple lines**.
+
+> **Important:** The same parsing algorithm is applied uniformly to **both** remote source content **and** the existing local `authorized_keys` file. There is no special treatment for local keys.
+
+#### Processing Steps
+
+For each line (if there are no lines, the file is discarded):
+
+1. **Trim:** Leading and trailing whitespace is removed from the line.
+1. **Classify:** The trimmed line is classified according to the table below.
+1. **Validate:** If classified as a potential key, structural validation is applied.
+
+#### Line Classification
+
+| Line Type       | Detection (after trim)                   | Action      |
+| --------------- | ---------------------------------------- | ----------- |
+| Empty line      | Zero length                              | **Discard** |
+| Comment line    | Starts with `#`                          | **Discard** |
+| HTML/JSON error | Starts with `<`, `{`, or `[`             | **Discard** |
+| Valid SSH key   | Passes structural validation (see below) | **Keep**    |
+| Malformed line  | Does not match any above                 | **Discard** |
+
+#### Structural Validation
+
+A trimmed line is considered a valid SSH public key if **all** of the following conditions are met:
+
+1. The line is not empty.
+1. The line does not start with `#`, `<`, `{`, or `[`.
+1. The line contains **at least 2 whitespace-separated fields**. Lines with 3, 4, or more fields are valid (additional fields are typically the optional comment or SSH options).
+
+This minimal validation ensures forward compatibility with any current or future SSH key type. The tool does not maintain a whitelist of key algorithms, nor does it validate key content or encoding.
+
+#### SSH Tolerance
+
+OpenSSH is tolerant of malformed lines in `authorized_keys`. If a line does not represent a valid SSH key, SSH silently ignores it—authentication for valid keys continues to work normally. This means that even if a non-key line passes the structural validation above, it will not break SSH access. The worst-case scenario is a harmless, ignored line in the file.
+
+#### Key Anatomy Reference
+
+A standard `authorized_keys` line has the following format:
+
+```
+[options] <key-type> <base64-blob> [comment]
+```
+
+- **options** (optional): Comma-separated restrictions (e.g., `restrict,port-forwarding`).
+- **key-type**: Algorithm identifier (e.g., `ssh-ed25519`, `ssh-rsa`, `ecdsa-sha2-nistp256`, `sk-ssh-ed25519@openssh.com`).
+- **base64-blob**: The actual public key data, base64-encoded. **Never contains spaces or newlines.**
+- **comment** (optional): Free-form text, typically `user@host`. No `#` prefix.
+
+### 3.3 Key Deduplication
+
+Keys are deduplicated globally across all sources and the local file.
+
+#### Comparison Method
+
+Two lines are considered **identical** if their **trimmed content matches exactly** (byte-for-byte comparison after whitespace trimming). This means:
+
+- `ssh-ed25519 AAA... user@host` and `ssh-ed25519 AAA... user@laptop` are **different** keys (different comment).
+- `ssh-ed25519 AAA... user@host` and `ssh-ed25519 AAA... user@host` are **identical** (whitespace is trimmed).
+
+This simple approach avoids parsing complexity. Duplicate SSH keys with different comments do not cause SSH failures—they simply grant the same access twice, which is harmless but redundant.
+
+#### Deduplication Rules
+
+1. **First occurrence wins:** If a line appears in multiple sources, it is attributed to the **first source** (in configuration order) where it was found.
+1. **Cross-source deduplication:** A line appearing in Source A and Source B is only listed once, under Source A.
+1. **Local deduplication:** If a local line also exists in a remote source, the remote source takes precedence (the line is listed under the remote source, not under "Local").
+1. **Intra-file deduplication:** Duplicate lines within the same source or local file are reduced to a single entry.
+
+#### Logging
+
+Deduplication events are logged to stdout for auditability. The generated `authorized_keys` file does **not** contain deduplication metadata—it remains clean and human-readable.
+
+### 3.4 Output Format
+
+The generated `authorized_keys` file follows a structured, auditable format.
+
+#### File Structure
+
+```
+# ──────────────────────────────────────────────────────────────────
+# Generated by AuthKeySync
+# Version:   vX.X.X
+# Commit:    <commit hash>
+# Built:     <ISO 8601 timestamp (UTC)>
+# Last sync: <ISO 8601 timestamp (UTC)>
+# More info: https://github.com/eduardolat/authkeysync
+# ──────────────────────────────────────────────────────────────────
+
+# Source: <url-1>
+<key-1>
+<key-2>
+
+# Source: <url-2>
+<key-3>
+
+# Local (preserved)
+<key-4>
+```
+
+#### Section Order
+
+1. **Header:** Metadata block with generation timestamp.
+1. **Remote Sources:** One section per source URL, in the order defined in the configuration file. Only keys attributed to that source (after deduplication) are listed.
+1. **Local Section:** Preserved local keys (only present if `preserve_local_keys=true`). Contains keys that existed in the previous `authorized_keys` file but were not found in any remote source.
+
+#### Empty Sections
+
+If a source yields zero keys (after deduplication), its section header is **omitted** entirely. If no local keys are preserved, the "Local (preserved)" section is omitted.
+
+### 3.5 The Atomic Write Procedure
+
+To prevent data corruption during power loss or system crashes, file writes are strictly atomic.
+
+1. **Resolve Paths:** Target is `~/.ssh/authorized_keys`, resolved from the user's home directory (e.g., `/root/.ssh/authorized_keys` for root, `/home/bob/.ssh/authorized_keys` for bob).
+1. **Temp File:** Create a temporary file **inside** the user's `.ssh/` directory (e.g., `~/.ssh/.authkeysync_<YYYYMMDD_HHMMSS>_<randomID>`).
+1. *Constraint:* Must be on the same filesystem partition to allow atomic `rename`.
+1. **Permissions (Security Critical):**
+1. Immediately execute `chmod 0600` on the temp file.
+1. **Result:** Owner: RW, Group: None, Others: None.
+1. **Ownership Hygiene:**
+1. Resolve Target User UID and **Primary GID** from the system.
+1. Execute `chown UID:GID` on the temp file.
+1. **Content Flush:** Write key data and execute `fsync()` to force physical disk write.
+1. **Atomic Swap:** Execute `os.Rename(temp, target)`.
+
+### 3.6 Exit Codes
+
+The binary communicates its status to the OS scheduler.
+
+| Exit Code | Meaning                                                                                                                                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`       | Success. All users were processed successfully (or skipped due to non-critical warnings such as missing user or `.ssh` directory).                                                                                 |
+| `1`       | Total or partial failure. At least one user failed to synchronize due to network or I/O errors. This signals the scheduler (Systemd/Cron) to log a failure event. Some users may have been processed successfully. |
+
+## 4. Backups
+
+Backups are performed locally within the user's `.ssh` directory to ensure permissions are inherited correctly.
+
+| Property      | Value                                                               |
+| ------------- | ------------------------------------------------------------------- |
+| **Directory** | `~/.ssh/authorized_keys_backups/` (created if missing, mode `0700`) |
+| **Filename**  | `authorized_keys_<YYYYMMDD_HHMMSS>_<randomID>` (UTC timestamp)      |
+| **Trigger**   | Only if content has changed **and** `backup_enabled=true`           |
+| **Retention** | Controlled by `backup_retention_count`. Oldest files deleted first. |
+
+**Ownership:** The backup directory and all backup files must be owned by the target user (UID:GID), not root. This ensures the user can manually manage their own backups if needed.
+
+**Timestamp Format:** All date/time components use zero-padding (e.g., `09` not `9` for September). This ensures alphabetical sorting matches chronological order.
+
+## 5. Development Requirements
+
+| Requirement     | Specification                                                                      |
+| --------------- | ---------------------------------------------------------------------------------- |
+| **Language**    | Go (Golang)                                                                        |
+| **Compilation** | Statically linked, `CGO_ENABLED=0`, no runtime dependencies                        |
+| **Binary Size** | As small as reasonably achievable                                                  |
+| **Logging**     | Structured logging to `stdout`, compatible with Journald and other log aggregators |
+| **Testing**     | Rigorous unit and integration tests covering all edge cases (see below)            |
+
+### 5.1 Testing Requirements
+
+Given the security-critical nature of this tool (incorrect behavior can lock users out of systems), comprehensive testing is **mandatory**.
+
+| Test Type             | Scope                                                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Unit Tests**        | All parsing logic, deduplication, file path resolution, permission handling, backup rotation                                                           |
+| **Integration Tests** | End-to-end sync cycles, atomic write verification, multi-user scenarios, error recovery                                                                |
+| **Edge Cases**        | Empty sources, malformed input, HTML error pages, network timeouts, permission errors, missing users, missing `.ssh` directories, concurrent execution |
+
+All tests must pass before any release. Test coverage should prioritize correctness over percentage metrics.
+
+### 5.2 Random ID Generation
+
+Random identifiers are used for temporary files and backup filenames to prevent collisions.
+
+| Property      | Value                        |
+| ------------- | ---------------------------- |
+| **Algorithm** | NanoID                       |
+| **Alphabet**  | `abcdefghijklmnopqrstuvwxyz` |
+| **Length**    | 6 characters                 |
+
+This configuration yields 26⁶ = 308,915,776 possible combinations, which is sufficient to prevent collisions in the context of file naming (typically a handful of files per user). The lowercase-only alphabet ensures compatibility with case-insensitive filesystems.
+
+# Usage
+
+This guide covers how to run AuthKeySync and automate it for continuous synchronization.
+
+## CLI Options
+
+```
+authkeysync [options]
+```
+
+| Option            | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `--config <path>` | Path to config file (default: `/etc/authkeysync/config.yaml`) |
+| `--dry-run`       | Simulate sync without modifying any files                     |
+| `--debug`         | Enable debug logging (most verbose)                           |
+| `--quiet`         | Show only warnings and errors (recommended for cron)          |
+| `--silent`        | Show only errors (most quiet)                                 |
+| `--version`       | Show version information and exit                             |
+| `--help`          | Show help message                                             |
+
+### Log Levels
+
+AuthKeySync supports four log levels to control output verbosity:
+
+| Level      | Shows                             | Use Case                                  |
+| ---------- | --------------------------------- | ----------------------------------------- |
+| (default)  | Info, warnings, and errors        | Normal interactive use                    |
+| `--debug`  | All messages including debug info | Troubleshooting and development           |
+| `--quiet`  | Only warnings and errors          | Cron jobs and scheduled tasks             |
+| `--silent` | Only errors                       | Minimal output, monitoring via exit codes |
+
+**Tip:** Use `--quiet` for cron jobs to reduce log noise while still being notified of issues.
+
+## Basic Usage
+
+### Run with Default Config
+
+```
+sudo authkeysync
+```
+
+This reads `/etc/authkeysync/config.yaml` and syncs all configured users.
+
+### Use Custom Config Path
+
+```
+sudo authkeysync --config /path/to/config.yaml
+```
+
+### Dry Run (Preview Changes)
+
+The `--dry-run` flag simulates the sync without making any changes:
+
+```
+sudo authkeysync --dry-run
+```
+
+This is useful for:
+
+- Testing a new configuration
+- Verifying source URLs are accessible
+- Previewing what would be written
+
+## Exit Codes
+
+AuthKeySync uses exit codes to indicate success or failure:
+
+| Exit Code | Meaning                                                                      |
+| --------- | ---------------------------------------------------------------------------- |
+| `0`       | Success: all users processed (or skipped due to missing user/ssh dir)        |
+| `1`       | Failure: at least one user failed to sync (network error, write error, etc.) |
+
+Use these codes for monitoring and alerting.
+
+## Automation
+
+### Cron Job
+
+Create a cron job to run AuthKeySync periodically. Use `--quiet` to reduce log noise while still logging warnings and errors:
+
+```
+# Run every 5 minutes (recommended: use --quiet for cron)
+echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" | sudo tee /etc/cron.d/authkeysync
+```
+
+Or edit root's crontab directly:
+
+```
+sudo crontab -e
+```
+
+Add:
+
+```
+# Sync SSH keys every 5 minutes (--quiet shows only warnings and errors)
+*/5 * * * * /usr/local/bin/authkeysync --quiet >> /var/log/authkeysync.log 2>&1
+```
+
+### Systemd Timer
+
+For systems using systemd, create a timer unit:
+
+**`/etc/systemd/system/authkeysync.service`**
+
+```
+[Unit]
+Description=AuthKeySync SSH Key Synchronization
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/authkeysync --quiet
+StandardOutput=journal
+StandardError=journal
+```
+
+**`/etc/systemd/system/authkeysync.timer`**
+
+```
+[Unit]
+Description=Run AuthKeySync every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable the timer:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable --now authkeysync.timer
+```
+
+Check status:
+
+```
+sudo systemctl status authkeysync.timer
+sudo systemctl list-timers | grep authkeysync
+```
+
+View logs:
+
+```
+sudo journalctl -u authkeysync.service
+```
+
+### Cloud-Init
+
+For cloud instances, include AuthKeySync in your cloud-init configuration:
+
+```
+#cloud-config
+write_files:
+  - path: /etc/authkeysync/config.yaml
+    permissions: "0600"
+    content: |
+      policy:
+        backup_enabled: true
+        preserve_local_keys: true
+      users:
+        - username: "root"
+          sources:
+            - url: "https://github.com/your-username.keys"
+
+runcmd:
+  # Download AuthKeySync
+  - curl -Lo /usr/local/bin/authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-linux-amd64
+  - chmod +x /usr/local/bin/authkeysync
+
+  # Run initial sync
+  - /usr/local/bin/authkeysync
+
+  # Setup cron job (--quiet for less noise in logs)
+  - echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" > /etc/cron.d/authkeysync
+```
+
+### Ansible
+
+```
+- name: Install AuthKeySync
+  hosts: all
+  become: yes
+  tasks:
+    - name: Download AuthKeySync binary
+      get_url:
+        url: https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-linux-amd64
+        dest: /usr/local/bin/authkeysync
+        mode: "0755"
+
+    - name: Create config directory
+      file:
+        path: /etc/authkeysync
+        state: directory
+        mode: "0755"
+
+    - name: Deploy configuration
+      copy:
+        dest: /etc/authkeysync/config.yaml
+        mode: "0600"
+        content: |
+          policy:
+            backup_enabled: true
+            preserve_local_keys: true
+          users:
+            - username: "root"
+              sources:
+                - url: "https://github.com/your-username.keys"
+
+    - name: Setup cron job
+      cron:
+        name: "AuthKeySync"
+        minute: "*/5"
+        job: "/usr/local/bin/authkeysync --quiet"
+        user: root
+
+    - name: Run initial sync
+      command: /usr/local/bin/authkeysync
+```
+
+### Terraform (with user_data)
+
+```
+resource "aws_instance" "web" {
+  ami           = "ami-0123456789"
+  instance_type = "t3.micro"
+
+  user_data = <<-EOF
+    #!/bin/bash
+    curl -Lo /usr/local/bin/authkeysync https://github.com/eduardolat/authkeysync/releases/latest/download/authkeysync-linux-amd64
+    chmod +x /usr/local/bin/authkeysync
+
+    mkdir -p /etc/authkeysync
+    cat > /etc/authkeysync/config.yaml <<EOC
+    policy:
+      backup_enabled: true
+      preserve_local_keys: true
+    users:
+      - username: "root"
+        sources:
+          - url: "https://github.com/your-username.keys"
+    EOC
+
+    /usr/local/bin/authkeysync
+    echo "*/5 * * * * root /usr/local/bin/authkeysync --quiet" > /etc/cron.d/authkeysync
+  EOF
+}
+```
+
+## Monitoring
+
+### Log Output
+
+AuthKeySync outputs structured logs to stdout, compatible with journald and log aggregators:
+
+```
+time=2024-01-15T10:30:45Z level=INFO msg="AuthKeySync starting" version=v1.0.0 config=/etc/authkeysync/config.yaml dry_run=false
+time=2024-01-15T10:30:45Z level=INFO msg="configuration loaded" users=2 backup_enabled=true backup_retention=10 preserve_local_keys=true
+time=2024-01-15T10:30:45Z level=INFO msg="processing user" username=root
+time=2024-01-15T10:30:46Z level=INFO msg="fetched keys from source" username=root url=https://github.com/your-username.keys keys=2 discarded_lines=0
+time=2024-01-15T10:30:46Z level=INFO msg="updated authorized_keys" username=root path=/root/.ssh/authorized_keys keys=2
+time=2024-01-15T10:30:46Z level=INFO msg="synchronization complete" success=2 skipped=0 failed=0
+time=2024-01-15T10:30:46Z level=INFO msg="all users processed successfully"
+```
+
+### Health Checks
+
+For monitoring systems, check:
+
+1. **Exit code**: `0` means success, `1` means failure
+1. **Log messages**: Look for `level=ERROR` entries
+1. **File modification time**: Check if `authorized_keys` is being updated
+
+Example monitoring script:
+
+```
+#!/bin/bash
+if ! /usr/local/bin/authkeysync 2>&1; then
+    echo "CRITICAL: AuthKeySync failed"
+    exit 2
+fi
+echo "OK: AuthKeySync completed successfully"
+exit 0
+```
+
+## Troubleshooting
+
+### User Not Found
+
+```
+level=WARN msg="user not found in system, skipping" username=deploy
+```
+
+**Solution**: Create the user or fix the username in config.
+
+### SSH Directory Missing
+
+```
+level=WARN msg=".ssh directory not found, skipping" username=deploy
+```
+
+**Solution**: Create the `.ssh` directory:
+
+```
+sudo mkdir -p /home/deploy/.ssh
+sudo chown deploy:deploy /home/deploy/.ssh
+sudo chmod 700 /home/deploy/.ssh
+```
+
+### Network Errors
+
+```
+level=ERROR msg="failed to fetch keys, aborting user sync" username=root error="source https://github.com/your-username.keys failed: request failed: ..."
+```
+
+**Solutions**:
+
+- Check network connectivity
+- Verify the URL is correct
+- Check firewall rules
+- For private APIs, verify authentication headers
+
+### Permission Denied
+
+```
+level=ERROR msg="failed to write authorized_keys" username=deploy error="permission denied"
+```
+
+**Solution**: Run AuthKeySync as root or with appropriate permissions.
+
+## Next Steps
+
+- [Configuration](https://eduardolat.github.io/authkeysync/configuration/index.md): Detailed configuration options
+- [Technical Specification](https://eduardolat.github.io/authkeysync/spec/index.md): Deep dive into internals
